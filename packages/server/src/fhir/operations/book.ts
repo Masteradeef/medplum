@@ -2,12 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { WithId } from '@medplum/core';
 import {
+  allOk,
   badRequest,
   conflict,
   created,
   EMPTY,
   getReferenceString,
   isNotFound,
+  isResourceWithId,
   OperationOutcomeError,
   Operator,
 } from '@medplum/core';
@@ -87,6 +89,48 @@ async function bookFromProposedAppointmentHandler(proposedAppointment: Appointme
   return [created, buildOutputParameters(bookOperation, bundle)];
 }
 
+async function bookFromHeldAppointment(heldAppointment: WithId<Appointment>): Promise<FhirResponse> {
+  const ctx = getAuthenticatedContext();
+  const updatedResources = await ctx.repo.withTransaction(
+    async () => {
+      // Re-read the appointment inside the transaction to guard against concurrent $book calls
+      const freshAppointment = await ctx.repo.readResource<Appointment>('Appointment', heldAppointment.id);
+      if (freshAppointment.status !== 'pending' && freshAppointment.status !== 'proposed') {
+        throw new OperationOutcomeError(conflict('Appointment is not in a bookable state'));
+      }
+
+      // Fetch slots via heldAppointment.slot
+      const slotRefs = freshAppointment.slot ?? [];
+      const slots = slotRefs.length > 0 ? await ctx.repo.readReferences(slotRefs) : [];
+
+      // Mark `busy-tentative` slots as `busy`
+      const updatedSlots = await Promise.all(
+        slots.map(async (slot) => {
+          if (slot instanceof Error) {
+            throw new OperationOutcomeError(badRequest('Referenced slot not found'));
+          }
+          if (slot.status === 'busy-tentative') {
+            return ctx.repo.updateResource<Slot>({ ...slot, status: 'busy' });
+          }
+          return slot;
+        })
+      );
+
+      // Change appointment.status from `pending` to `booked`
+      const updatedAppointment = await ctx.repo.updateResource<Appointment>({ ...freshAppointment, status: 'booked' });
+
+      return [...updatedSlots, updatedAppointment];
+    },
+    { serializable: true }
+  );
+  const bundle = {
+    resourceType: 'Bundle',
+    type: 'transaction-response',
+    entry: updatedResources.map((resource) => ({ resource })),
+  };
+  return [allOk, buildOutputParameters(bookOperation, bundle)];
+}
+
 /**
  * Handles HTTP requests for the Appointment $book operation.
  *
@@ -108,6 +152,10 @@ export async function appointmentBookHandler(req: FhirRequest): Promise<FhirResp
       throw new OperationOutcomeError(
         badRequest('`patient-reference` parameter not allowed with `appointment` parameter')
       );
+    }
+
+    if (isResourceWithId<Appointment>(params.appointment, 'Appointment')) {
+      return bookFromHeldAppointment(params.appointment);
     }
 
     return bookFromProposedAppointmentHandler(params.appointment);
