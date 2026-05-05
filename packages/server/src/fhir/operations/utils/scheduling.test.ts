@@ -483,6 +483,29 @@ describe('removeAvailability', () => {
   });
 });
 
+describe('slotsOverlappingInterval', () => {
+  test('throws when a full page of DEFAULT_MAX_SEARCH_COUNT slots is returned', async () => {
+    const mockSlot: Slot = {
+      resourceType: 'Slot',
+      status: 'busy',
+      start: '2025-12-01T10:00:00Z',
+      end: '2025-12-01T11:00:00Z',
+      schedule: { reference: `Schedule/${schedule.id}` },
+    };
+    const fullPage = Array.from({ length: DEFAULT_MAX_SEARCH_COUNT }, () => mockSlot);
+    const mockRepo = {
+      searchResources: async () => fullPage,
+    } as unknown as Repository;
+
+    await expect(
+      slotsOverlappingInterval(mockRepo, [schedule as WithId<Schedule>], {
+        start: new Date('2025-12-01'),
+        end: new Date('2025-12-31'),
+      })
+    ).rejects.toThrow('Too many slots found in range');
+  });
+});
+
 function makeSlots(
   schedule: Schedule,
   intervals: Interval[],
