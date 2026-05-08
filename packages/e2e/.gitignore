@@ -1,0 +1,5 @@
+# Coverage artefacts – never commit
+results/
+coverage/tests/generated/
+playwright-report/
+test-results/

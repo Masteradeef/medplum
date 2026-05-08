@@ -23,9 +23,14 @@
   "scripts": {
     "playwright:codegen": "npx playwright codegen http://localhost:3000",
     "playwright:install": "npx playwright install --with-deps chromium",
-    "test:smoke": "npx playwright test smoke/medplum.smoke.test.ts --reporter=list,html"
+    "test:smoke": "npx playwright test smoke/medplum.smoke.test.ts --reporter=list,html",
+    "coverage:run": "npx playwright test --config=playwright.coverage.config.ts --reporter=list,html",
+    "coverage:gaps": "node scripts/coverage-gaps.mjs",
+    "coverage:close-gap": "node scripts/close-gap.mjs"
   },
   "devDependencies": {
+    "@bgotink/playwright-coverage": "^0.3.2",
+    "@medplum/mock": "5.1.11",
     "@playwright/test": "1.59.1",
     "@types/node": "^22.0.0"
   },

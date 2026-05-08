@@ -1,7 +1,14 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "types": ["node"]
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "types": ["node", "vite/client"],
+    "paths": {
+      "@medplum/mock": ["../mock/src"],
+      "@medplum/core": ["../core/src"],
+      "@medplum/fhirtypes": ["../fhirtypes/src"],
+      "@medplum/fhir-router": ["../fhir-router/src"]
+    }
   },
-  "include": ["smoke/**/*.ts"]
+  "include": ["smoke/**/*.ts", "coverage/**/*.ts", "playwright.coverage.config.ts"]
 }

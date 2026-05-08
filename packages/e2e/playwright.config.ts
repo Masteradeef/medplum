@@ -1,6 +1,8 @@
-import { PlaywrightTestConfig } from '@playwright/test';
+// SPDX-FileCopyrightText: Copyright Orangebot, Inc. and Medplum contributors
+// SPDX-License-Identifier: Apache-2.0
+import { defineConfig } from '@playwright/test';
 
-const config: PlaywrightTestConfig = {
+const config = defineConfig({
   testDir: './',
   timeout: 30000,
   expect: {
@@ -24,6 +26,6 @@ const config: PlaywrightTestConfig = {
   retries: 2,
   // Run tests in parallel
   workers: 3,
-};
+});
 
 export default config;
